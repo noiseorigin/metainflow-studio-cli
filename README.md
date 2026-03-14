@@ -1,6 +1,6 @@
 # metainflow-studio-cli
 
-`metainflow-studio-cli` is a Python CLI toolkit. The first implemented command is `parse-doc`.
+`metainflow-studio-cli` is a Python CLI toolkit. The current implemented commands are `parse-doc` and `search-summary`.
 
 ## Skills
 
@@ -14,18 +14,35 @@ ln -sfn "$(pwd)/metainflow-skills/metainflow-doc-parse" "$HOME/.agents/skills/me
 
 More agent-facing setup details are in `docs/agent-usage.md`.
 
+Available repo-local skills:
+
+- `metainflow-doc-parse`
+- `metainflow-web-search`
+
 ## Quick Start
 
 ```bash
 python -m pip install -e .[dev]
 pytest -q
 python -m metainflow_studio_cli.main parse-doc --file ./sample.txt --output json
+python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json
 ```
+
+## Search Summary
+
+Use `search-summary` when you need keyword-based web search plus AI-generated summary:
+
+```bash
+metainflow search-summary --query "React 19 新特性" --instruction "按功能分类整理" --output json
+```
+
+`metainflow-studio-cli` acquires search results itself (currently Playwright-driven Baidu search by default), then uses the configured model only for summarization.
 
 ## Supported `parse-doc` extensions
 
 - `.pdf`
 - `.doc` (converted via LibreOffice `soffice`)
+- `.xls` (converted via LibreOffice `soffice`)
 - `.docx`
 - `.pptx`
 - `.xlsx`
@@ -40,10 +57,11 @@ python -m metainflow_studio_cli.main parse-doc --file ./sample.txt --output json
 - `PROVIDER_TIMEOUT_SECONDS`
 - `PROVIDER_MAX_RETRIES`
 - `PROVIDER_MODEL_DOC_PARSE`
+- `PROVIDER_MODEL_WEB_SEARCH`
 
 ## Ubuntu dependencies
 
-Install system packages for full `.doc` and OCR support:
+Install system packages for full `.doc` / `.xls` and OCR support:
 
 ```bash
 sudo apt-get update

@@ -12,15 +12,45 @@
 
 现阶段已实现的主能力：
 - `parse-doc`
+- `search-summary`
+
+其中 `search-summary` 的实现边界是：
+- 搜索结果获取由 `metainflow-studio-cli` 自己完成
+- 配置模型只负责总结，不负责联网搜索
+- 当前默认搜索源是 Playwright 驱动的百度搜索
+
+当前设计现状：
+- 调用链路是 `CLI -> service -> search_provider -> summary_provider`
+- `search_provider` 通过 Playwright 打开百度搜索页并标准化 `title / url / snippet`
+- `summary_provider` 再基于标准化结果调用普通模型接口做总结
+- `json` 模式下，如果搜索成功但总结失败，会保留已获取的 `results`
+
+当前表现判断：
+- 优点：搜索与模型原生 web-search 能力已经解耦，切换模型不影响搜索主链路
+- 优点：相比纯 HTTP 抓取，Playwright 更适合处理百度搜索页的动态行为与风控场景
+- 优点：真实联调已验证 `Playwright + 百度搜索 + 普通模型总结` 主链路可跑通
+- 问题：Playwright 方案更重、更慢，部署和运行成本更高
+- 问题：当前结果链接仍是百度跳转链接，尚未解到最终目标 URL
+- 问题：当前仍是单搜索源方案，还没有多源 fallback 和正文抓取后的二次总结
+
+当前待优化事项：
+- 增加 query 改写和搜索结果质量过滤
+- 增加多搜索源 fallback（如 SearXNG / 其他源）
+- 增加结果去重、来源质量排序、官方站点优先策略
+- 增加 `search -> web-crawl -> summarize` 的第二阶段深度模式
+- 增加百度跳转链接解析，尽量返回真实目标 URL
+- 评估是否在保留 Playwright 主路径的同时，引入更轻量的搜索 API 或自建聚合层作为补充
 
 对应 skill：
 - `metainflow-doc-parse`
+- `metainflow-web-search`
 
 当前支持的文档类型：
 - `.pdf`
 - `.doc`
 - `.docx`
 - `.pptx`
+- `.xls`
 - `.xlsx`
 - `.csv`
 - `.txt`
@@ -35,6 +65,7 @@
 
 ```bash
 python -m pip install -e '.[dev]'
+python -m playwright install chromium
 hash -r
 ```
 
@@ -44,6 +75,7 @@ hash -r
 which metainflow
 metainflow --help
 metainflow parse-doc --help
+metainflow search-summary --help
 ```
 
 普通使用方式请看：`docs/usage.md`
@@ -63,6 +95,7 @@ metainflow parse-doc --help
 
 ```bash
 metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
+metainflow search-summary --query "React 19 新特性" --output json
 ```
 
 如果 shell 里没有 `metainflow`，临时改用：
@@ -80,6 +113,8 @@ metainflow-studio-cli/
   metainflow-skills/
     metainflow-doc-parse/
       SKILL.md
+    metainflow-web-search/
+      SKILL.md
 ```
 
 这样做的目的：
@@ -91,12 +126,14 @@ metainflow-studio-cli/
 
 ```bash
 ln -sfn "$(pwd)/metainflow-skills/metainflow-doc-parse" "$HOME/.agents/skills/metainflow-doc-parse"
+ln -sfn "$(pwd)/metainflow-skills/metainflow-web-search" "$HOME/.agents/skills/metainflow-web-search"
 ```
 
 验证挂载：
 
 ```bash
 ls -l "$HOME/.agents/skills/metainflow-doc-parse"
+ls -l "$HOME/.agents/skills/metainflow-web-search"
 ```
 
 注意：
@@ -114,6 +151,7 @@ ls -l "$HOME/.agents/skills/metainflow-doc-parse"
 
 ```bash
 python -m pip install -e '.[dev]'
+python -m playwright install chromium
 hash -r
 ```
 
@@ -127,6 +165,7 @@ which metainflow
 
 ```bash
 metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
+metainflow search-summary --query "React 19 新特性" --output json
 ```
 
 ### 第 4 步：跑测试
@@ -174,6 +213,8 @@ METAINFLOW_RUN_SAMPLE_MATRIX=1 pytest -q tests/integration/test_real_sample_matr
 3. 再挂载到 `~/.agents/skills/`
 4. 新开会话验证 skill 可发现
 
+如果当前在 feature worktree 中验证 skill，挂载命令应指向该 worktree 路径。
+
 ---
 
 ## 6. 开发时重点关注
@@ -183,6 +224,9 @@ METAINFLOW_RUN_SAMPLE_MATRIX=1 pytest -q tests/integration/test_real_sample_matr
 - 先保证 `parse-doc` 稳定，再扩其他命令
 - 真实样本优先，避免只测 mock
 - skill 只是能力入口，核心仍然是 CLI / service / parser
+- `search-summary` 要保持“搜索”和“总结”两层解耦，避免绑定 provider-native web search
+- `search-summary` 当前是可用基线，但搜索质量和搜索源稳定性仍需持续优化
+- Playwright 搜索链路要重点关注启动耗时、超时、验证码和浏览器环境依赖
 
 ## 7. 常见问题
 
@@ -195,7 +239,7 @@ python -m pip install -e '.[dev]'
 hash -r
 ```
 
-### `.doc` 解析失败，提示 `soffice not found`
+### `.doc` / `.xls` 解析失败，提示 `soffice not found`
 
 说明系统缺 LibreOffice。
 

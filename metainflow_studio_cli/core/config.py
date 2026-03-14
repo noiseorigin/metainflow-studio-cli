@@ -11,6 +11,8 @@ class Settings:
     provider_timeout_seconds: int
     provider_max_retries: int
     provider_model_doc_parse: str
+    provider_model_web_search: str
+    web_search_page_timeout_seconds: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -20,4 +22,6 @@ class Settings:
             provider_timeout_seconds=int(os.getenv("PROVIDER_TIMEOUT_SECONDS", "60")),
             provider_max_retries=int(os.getenv("PROVIDER_MAX_RETRIES", "2")),
             provider_model_doc_parse=os.getenv("PROVIDER_MODEL_DOC_PARSE", "gpt-4.1-mini"),
+            provider_model_web_search=os.getenv("PROVIDER_MODEL_WEB_SEARCH", "gpt-4.1-mini"),
+            web_search_page_timeout_seconds=int(os.getenv("WEB_SEARCH_PAGE_TIMEOUT_SECONDS", "30")),
         )

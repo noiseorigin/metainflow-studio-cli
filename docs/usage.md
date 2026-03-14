@@ -2,9 +2,12 @@
 
 ## 一句话说明
 
-`metainflow-studio-cli` 当前主功能是 `parse-doc`：解析文档（本地或 URL），输出文本或 JSON。
+`metainflow-studio-cli` 当前主功能是：
 
-支持格式：`.pdf .doc .docx .pptx .xlsx .csv .txt .md .html`
+- `parse-doc`：解析文档（本地或 URL），输出文本或 JSON
+- `search-summary`：按关键词搜索互联网信息，并输出 AI 总结
+
+支持格式：`.pdf .doc .docx .pptx .xls .xlsx .csv .txt .md .html`
 
 ## 1) 安装
 
@@ -49,6 +52,7 @@ which metainflow
 ```bash
 metainflow --help
 metainflow parse-doc --help
+metainflow search-summary --help
 ```
 
 ### 验证真实样本
@@ -83,10 +87,25 @@ metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx --outpu
 metainflow parse-doc --file "https://example.com/page.html" --output json
 ```
 
+### 搜索互联网信息
+
+```bash
+metainflow search-summary --query "React 19 新特性"
+```
+
+说明：当前 `search-summary` 由 `metainflow-studio-cli` 自己获取搜索结果，再调用配置模型做总结。
+
+### 搜索并输出 JSON
+
+```bash
+metainflow search-summary --query "ByteDance 开源项目" --instruction "按项目类型分类" --output json
+```
+
 如果 `metainflow` 命令不可用，可临时用：
 
 ```bash
 python -m metainflow_studio_cli.main parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
+python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json
 ```
 
 ## 3) JSON 输出结构
@@ -115,9 +134,31 @@ python -m metainflow_studio_cli.main parse-doc --file ./tests/integration/sample
 }
 ```
 
+`search-summary --output json` 统一返回：
+
+```json
+{
+  "success": true,
+  "data": {
+    "summary": "...",
+    "query": "React 19 新特性",
+    "instruction": "按功能分类整理",
+    "results": []
+  },
+  "meta": {
+    "search_provider": "baidu-playwright",
+    "summary_provider": "llm",
+    "model": "...",
+    "latency_ms": 0,
+    "request_id": "..."
+  },
+  "error": null
+}
+```
+
 ## 4) Ubuntu 必装依赖
 
-为保证 `.doc` 转换和 PDF OCR 可用：
+为保证 `.doc` / `.xls` 转换和 PDF OCR 可用：
 
 ```bash
 sudo apt-get update
@@ -130,7 +171,7 @@ sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-chi-sim tesserac
 - 先执行：`python -m pip install -e '.[dev]'`
 - 再执行：重开终端或 `hash -r`
 
-### `.doc` 解析失败（`soffice not found`）
+### `.doc` / `.xls` 解析失败（`soffice not found`）
 - 安装 `libreoffice`
 
 ### PDF 输出为空

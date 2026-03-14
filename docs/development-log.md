@@ -30,6 +30,12 @@
   - `1` 处理失败
   - `2` 参数/校验失败
   - `3` 外部依赖或网络失败
+- 在 `feat/web-search` worktree 中实现 `search-summary` 的独立开发分支。
+- 将 web search 主链路改为 `Playwright + 百度搜索 + 普通模型总结`。
+- 实现 `playwright_search_provider`，并修复真实百度页面上的三个关键问题：
+  - 结果节点实际为 `ElementHandle`，不能按 `Locator` 假设处理
+  - 摘要内容位于 `[data-sanssr-cmpt="card/www-summary"]`
+  - `.result-op` 不是无结果标记，不能提前返回空结果
 
 ### 测试与验证结果
 - 单元/服务测试：`pytest -q` 结果 `15 passed, 1 skipped`。
@@ -39,11 +45,19 @@
 - 真实样本逐个命令验证（`parse-doc --output json`）：
   - 通过：`pdf/docx/pptx/xlsx/csv/txt/md/html`
   - 失败：`doc`（当前环境缺少 `soffice`）
+- `feat/web-search` worktree 聚焦测试：`24 passed`
+- `feat/web-search` worktree 全量测试：`40 passed, 1 skipped`
+- `feat/web-search` 真实联调：
+  - `python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json`
+  - 结果：Playwright 百度搜索返回非空结果，Infini 普通模型总结成功
 
 ### 当前已知问题
 - `.doc` 解析依赖 LibreOffice：若系统无 `soffice`，会返回错误。
+- Playwright 搜索链路仍依赖浏览器环境与百度页面结构。
+- 当前搜索结果 URL 仍是百度跳转链接，未解析到最终目标地址。
 
 ### 下一步计划
 - 在 Ubuntu 服务器安装并验证系统依赖：`libreoffice`、`tesseract-ocr`、`poppler-utils` 等。
 - 增加真实样本端到端断言（不止检查扩展名覆盖，还检查输出字段和内容质量）。
 - 根据真实样本结果持续修正解析器细节。
+- 为 Playwright 百度搜索补充跳转链接解析、质量过滤和多源 fallback。

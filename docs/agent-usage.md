@@ -87,16 +87,16 @@ metainflow-studio-cli/
 - 提交、评审、回滚更简单
 - 避免 skill 与真实能力实现脱节
 
-挂载到 OpenCode 用户技能目录：
+在仓库根目录挂载到 OpenCode 用户技能目录：
 
 ```bash
-ln -sfn "/Users/zsy/Desktop/openclaw/BeeClaw/metainflow-studio-cli/metainflow-skills/metainflow-doc-parse" "/Users/zsy/.agents/skills/metainflow-doc-parse"
+ln -sfn "$(pwd)/metainflow-skills/metainflow-doc-parse" "$HOME/.agents/skills/metainflow-doc-parse"
 ```
 
 验证挂载：
 
 ```bash
-ls -l "/Users/zsy/.agents/skills/metainflow-doc-parse"
+ls -l "$HOME/.agents/skills/metainflow-doc-parse"
 ```
 
 注意：

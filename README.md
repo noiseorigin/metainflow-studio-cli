@@ -6,10 +6,10 @@
 
 Project skills live in `metainflow-skills/` inside this repository so they stay versioned with the CLI implementation.
 
-For local OpenCode discovery, symlink a skill into `~/.agents/skills/`:
+For local OpenCode discovery, symlink a skill into `~/.agents/skills/` from the repo root:
 
 ```bash
-ln -sfn "/Users/zsy/Desktop/openclaw/BeeClaw/metainflow-studio-cli/metainflow-skills/metainflow-doc-parse" "/Users/zsy/.agents/skills/metainflow-doc-parse"
+ln -sfn "$(pwd)/metainflow-skills/metainflow-doc-parse" "$HOME/.agents/skills/metainflow-doc-parse"
 ```
 
 More agent-facing setup details are in `docs/agent-usage.md`.

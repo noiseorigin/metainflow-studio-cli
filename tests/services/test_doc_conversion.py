@@ -104,3 +104,110 @@ def test_convert_xls_to_xlsx_requires_output_file(monkeypatch, tmp_path: Path) -
 
     with pytest.raises(ProcessingError, match="xls conversion completed but .xlsx output is missing"):
         convert_xls_to_xlsx(source_xls)
+
+
+def test_convert_xls_to_xlsx_waits_for_delayed_output(monkeypatch, tmp_path: Path) -> None:
+    source_xls = tmp_path / "legacy.xls"
+    source_xls.write_bytes(b"xls-binary")
+    output_dir = tmp_path / "converted"
+    output_dir.mkdir()
+    converted_xlsx = output_dir / "legacy.xlsx"
+
+    monkeypatch.setattr("tempfile.mkdtemp", lambda prefix: str(output_dir))
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args=["soffice"], returncode=0),
+    )
+
+    original_exists = Path.exists
+    checks = {"count": 0}
+
+    def fake_exists(path: Path) -> bool:
+        if path == converted_xlsx:
+            checks["count"] += 1
+            if checks["count"] == 3:
+                with zipfile.ZipFile(converted_xlsx, "w") as archive:
+                    archive.writestr(
+                        "xl/worksheets/sheet1.xml",
+                        "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData/></worksheet>",
+                    )
+            if checks["count"] < 3:
+                return False
+        return original_exists(path)
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+
+    result = convert_xls_to_xlsx(source_xls)
+
+    assert result == converted_xlsx
+    assert checks["count"] >= 3
+
+
+def test_convert_xls_to_xlsx_retries_when_soffice_returns_success_without_output(monkeypatch, tmp_path: Path) -> None:
+    source_xls = tmp_path / "legacy.xls"
+    source_xls.write_bytes(b"xls-binary")
+    output_dir = tmp_path / "converted"
+    output_dir.mkdir()
+    converted_xlsx = output_dir / "legacy.xlsx"
+
+    monkeypatch.setattr("tempfile.mkdtemp", lambda prefix: str(output_dir))
+
+    calls = {"count": 0}
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls["count"] += 1
+        if calls["count"] == 2:
+            with zipfile.ZipFile(converted_xlsx, "w") as archive:
+                archive.writestr(
+                    "xl/worksheets/sheet1.xml",
+                    "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData/></worksheet>",
+                )
+        return subprocess.CompletedProcess(args=["soffice"], returncode=0)
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    result = convert_xls_to_xlsx(source_xls)
+
+    assert result == converted_xlsx
+    assert calls["count"] == 2
+
+
+def test_convert_xls_to_xlsx_waits_for_readable_zip(monkeypatch, tmp_path: Path) -> None:
+    source_xls = tmp_path / "legacy.xls"
+    source_xls.write_bytes(b"xls-binary")
+    output_dir = tmp_path / "converted"
+    output_dir.mkdir()
+    converted_xlsx = output_dir / "legacy.xlsx"
+
+    monkeypatch.setattr("tempfile.mkdtemp", lambda prefix: str(output_dir))
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args=["soffice"], returncode=0),
+    )
+
+    original_exists = Path.exists
+    original_sleep = __import__("time").sleep
+    state = {"written": False, "slept": False}
+
+    def fake_exists(path: Path) -> bool:
+        if path == converted_xlsx and not state["written"]:
+            converted_xlsx.write_bytes(b"not-a-zip-yet")
+            state["written"] = True
+        return original_exists(path)
+
+    def fake_sleep(seconds: float) -> None:
+        if not state["slept"]:
+            with zipfile.ZipFile(converted_xlsx, "w") as archive:
+                archive.writestr("xl/worksheets/sheet1.xml", "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData/></worksheet>")
+            state["slept"] = True
+        else:
+            original_sleep(0)
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr("time.sleep", fake_sleep)
+
+    result = convert_xls_to_xlsx(source_xls)
+
+    assert result == converted_xlsx
+    with zipfile.ZipFile(result):
+        pass

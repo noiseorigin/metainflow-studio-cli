@@ -22,6 +22,13 @@
 
 ## 2026-03-14
 
+### 2026-03-14 17:45
+
+- `doc-parse`：补齐 `.xls -> .xlsx` 转换链路，并保留原始输入的 `source.file_type / resolved_path`。
+- `doc-parse`：增强 `.xlsx` 解析，支持坐标保真、merged cells 展开。
+- `testing`：新增 `.xls` 真实样本、转换重试回归、merge 解析测试与集成验证。
+- `docs`：更新 `metainflow-doc-parse` skill，并记录复杂模板区域切分的当前 TODO。
+
 ### 2026-03-14 12:53
 
 - `docs`：新增分钟级 `changelog`，用于高频迭代追踪。

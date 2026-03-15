@@ -32,6 +32,9 @@ description: "Use when user needs to parse, extract, or read content from docume
 # 解析本地文档
 metainflow parse-doc --file report.pdf
 
+# 解析旧版 Excel（需要 LibreOffice / soffice）
+metainflow parse-doc --file legacy.xls --output json
+
 # 解析 URL 并输出 JSON
 metainflow parse-doc --file https://example.com/document.docx --output json
 
@@ -47,6 +50,13 @@ python -m metainflow_studio_cli.main parse-doc --file data.xlsx --output json
 ├─ 文档是网页正文抓取任务 → 未来可接 metainflow web-crawl（待实现）
 └─ 需要结构化结果供程序处理 → 使用 --output json
 ```
+
+## 表格输出说明
+
+- `.xls` 先通过 `LibreOffice soffice` 转成 `.xlsx`，再复用现有 Excel 解析链路
+- `--output json` 的 `tables` 字段会返回规则二维数组，适合脚本和 agent 消费
+- 对 merged cells，输出会按可读性优先展开：用左上角单元格值填充整个合并区域
+- Markdown 表格和 `tables` 的内容保持一致
 
 ## Common Mistakes
 

@@ -4,7 +4,7 @@ import time
 
 from metainflow_studio_cli.core.config import Settings
 from metainflow_studio_cli.core.errors import ExternalError, ProcessingError, ValidationError
-from metainflow_studio_cli.services.web_search.playwright_search_provider import search_web_with_playwright
+from metainflow_studio_cli.services.web_search.search_provider import search_web
 from metainflow_studio_cli.services.web_search.summary_provider import summarize_search_results
 
 
@@ -18,11 +18,9 @@ def search_summary(query: str, instruction: str = "", output: str = "text") -> d
         raise ValidationError("--query must not be empty")
 
     normalized_instruction = instruction.strip()
-    search_result = search_web_with_playwright(
-        query=normalized_query,
-    )
+    settings = Settings.from_env()
+    search_result = search_web(query=normalized_query, settings=settings)
     if search_result["results"]:
-        settings = Settings.from_env()
         try:
             summary_result = summarize_search_results(
                 query=normalized_query,
@@ -44,7 +42,7 @@ def search_summary(query: str, instruction: str = "", output: str = "text") -> d
                 "meta": {
                     "search_provider": search_result["provider"],
                     "summary_provider": "llm",
-                    "model": settings.provider_model_web_search,
+                    "model": settings.summary_model,
                     "latency_ms": int((time.perf_counter() - started) * 1000),
                     "request_id": "",
                 },
@@ -64,7 +62,7 @@ def search_summary(query: str, instruction: str = "", output: str = "text") -> d
                 "meta": {
                     "search_provider": search_result["provider"],
                     "summary_provider": "llm",
-                    "model": settings.provider_model_web_search,
+                    "model": settings.summary_model,
                     "latency_ms": int((time.perf_counter() - started) * 1000),
                     "request_id": "",
                 },

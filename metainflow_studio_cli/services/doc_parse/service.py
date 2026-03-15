@@ -49,7 +49,9 @@ def parse_document(file_or_url: str, output: str = "text") -> dict:
     started = time.perf_counter()
     resolved = resolve_input(file_or_url)
     source_path = resolved.local_path
+    original_source_path = source_path
     extension = detect_extension(str(source_path))
+    original_extension = extension
 
     if extension not in SUPPORTED_EXTENSIONS:
         supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
@@ -69,8 +71,8 @@ def parse_document(file_or_url: str, output: str = "text") -> dict:
             "tables": tables,
             "source": {
                 "input": file_or_url,
-                "resolved_path": str(source_path),
-                "file_type": extension,
+                "resolved_path": str(original_source_path),
+                "file_type": original_extension,
             },
         },
         "meta": {

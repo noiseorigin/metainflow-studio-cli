@@ -12,6 +12,8 @@ def test_provider_prefix_env_loading(monkeypatch) -> None:
     monkeypatch.setenv("SEARCH_PROVIDER_ENGINE", "search_pro")
     monkeypatch.setenv("SEARCH_RESULT_COUNT", "8")
     monkeypatch.setenv("SEARXNG_BASE_URL", "http://searx.local:8080")
+    monkeypatch.setenv("PROVIDER_MODEL_WEB_FETCH", "fetch-model")
+    monkeypatch.setenv("METAINFLOW_WEB_FETCH_VERIFY_SSL", "0")
 
     settings = Settings.from_env()
 
@@ -20,12 +22,15 @@ def test_provider_prefix_env_loading(monkeypatch) -> None:
     assert settings.summary_base_url == "https://summary.example.com/v1"
     assert settings.summary_api_key == "summary-secret"
     assert settings.provider_model_web_search == "glm-4-air"
+    assert settings.provider_model_web_fetch == "fetch-model"
     assert settings.summary_model == "summary-model"
     assert settings.search_page_timeout_seconds == 25
     assert settings.web_search_backend == "auto"
     assert settings.search_provider_engine == "search_pro"
     assert settings.search_result_count == 8
     assert settings.searxng_base_url == "http://searx.local:8080"
+    assert settings.web_fetch_verify_ssl is False
+
 
 def test_summary_endpoint_and_key_fall_back_to_primary_provider(monkeypatch) -> None:
     monkeypatch.setenv("PROVIDER_BASE_URL", "https://example.com/v1")
@@ -45,3 +50,11 @@ def test_summary_model_defaults_to_glm_4_flash(monkeypatch) -> None:
     settings = Settings.from_env()
 
     assert settings.summary_model == "glm-4-flash"
+
+
+def test_web_fetch_verify_ssl_defaults_true(monkeypatch) -> None:
+    monkeypatch.delenv("METAINFLOW_WEB_FETCH_VERIFY_SSL", raising=False)
+
+    settings = Settings.from_env()
+
+    assert settings.web_fetch_verify_ssl is True

@@ -11,3 +11,4 @@ def test_help_contains_parse_doc_command() -> None:
     assert result.exit_code == 0
     assert "parse-doc" in result.stdout
     assert "search-summary" in result.stdout
+    assert "web-crawl" in result.stdout

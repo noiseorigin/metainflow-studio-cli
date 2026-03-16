@@ -6,8 +6,44 @@
 
 - `parse-doc`：解析文档（本地或 URL），输出文本或 JSON
 - `search-summary`：按关键词搜索互联网信息，并输出 AI 总结
+- `web-crawl`：抓取指定 URL 的网页内容，并按需总结/提取
 
 支持格式：`.pdf .doc .docx .pptx .xls .xlsx .csv .txt .md .html`
+
+## 0) 环境变量配置
+
+复制模版并填入实际值：
+
+```bash
+cp .env.example .env
+```
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `PROVIDER_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容接口地址；如需启用 `search-summary` 的智谱主搜索链路，可改成 `https://open.bigmodel.cn/api/paas/v4` |
+| `PROVIDER_API_KEY` | _(必填)_ | API 密钥 |
+| `PROVIDER_TIMEOUT_SECONDS` | `60` | 单次请求超时秒数 |
+| `PROVIDER_MAX_RETRIES` | `2` | 失败后最大重试次数 |
+| `PROVIDER_MODEL_DOC_PARSE` | `gpt-4.1-mini` | `parse-doc` 使用的模型 |
+| `PROVIDER_MODEL_WEB_SEARCH` | `glm-4-air` | 搜索 provider 的预留配置 |
+| `PROVIDER_MODEL_WEB_FETCH` | `gpt-4.1-mini` | `web-crawl` 总结阶段使用的模型 |
+| `SUMMARY_BASE_URL` | 回退到 `PROVIDER_BASE_URL` | `search-summary` 总结阶段可单独覆盖端点 |
+| `SUMMARY_API_KEY` | 回退到 `PROVIDER_API_KEY` | `search-summary` 总结阶段可单独覆盖密钥 |
+| `SUMMARY_MODEL` | `glm-4-flash` | `search-summary` 总结阶段使用的模型 |
+| `SEARCH_PAGE_TIMEOUT_SECONDS` | `30` | 百度 Playwright fallback 的页面超时 |
+| `WEB_SEARCH_BACKEND` | `auto` | `auto` / `zhipu-web-search` / `searxng-web-search` / `baidu-playwright` |
+| `SEARCH_PROVIDER_ENGINE` | `search_pro` | 智谱搜索档位 |
+| `SEARCH_RESULT_COUNT` | `10` | 搜索结果数量 |
+| `SEARXNG_BASE_URL` | `http://localhost:8080` | SearXNG fallback 地址 |
+| `METAINFLOW_WEB_FETCH_VERIFY_SSL` | `1` | `web-crawl` 是否校验 SSL |
+| `METAINFLOW_RUN_SAMPLE_MATRIX` | _(未设置)_ | 设为 `1` 启用真实样本矩阵集成测试 |
+
+如果需要 `search-summary` 的 Baidu Playwright fallback：
+
+```bash
+pip install -e ".[playwright,dev]"
+python -m playwright install chromium
+```
 
 ## 1) 安装
 
@@ -32,38 +68,15 @@ python -m pip install -e '.[dev]'
 hash -r
 ```
 
-说明：
-- `-e` 是 editable 安装，源码改动会直接指向当前目录
-- 如果改了入口、依赖或脚本定义，重新执行一次最稳妥
-- `hash -r` 用于刷新 shell 对命令路径的缓存
-
 ## 1.2) 本地更新后验证
 
 推荐按这个顺序验证：
-
-### 验证命令路径
-
-```bash
-which metainflow
-```
-
-### 验证帮助信息
 
 ```bash
 metainflow --help
 metainflow parse-doc --help
 metainflow search-summary --help
-```
-
-### 验证真实样本
-
-```bash
-metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
-```
-
-### 验证测试
-
-```bash
+metainflow web-crawl --help
 pytest -q
 ```
 
@@ -75,13 +88,7 @@ pytest -q
 metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx
 ```
 
-### 输出 JSON（推荐调试和程序调用）
-
-```bash
-metainflow parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
-```
-
-### 解析 URL
+### 解析 URL 并输出 JSON
 
 ```bash
 metainflow parse-doc --file "https://example.com/page.html" --output json
@@ -91,46 +98,20 @@ metainflow parse-doc --file "https://example.com/page.html" --output json
 
 ```bash
 metainflow search-summary --query "React 19 新特性"
-```
-
-说明：当前 `search-summary` 由 `metainflow-studio-cli` 自己获取搜索结果，再调用配置模型做总结。默认策略是先走智谱结构化搜索，再在失败时回退到百度 Playwright。
-
-### 搜索并输出 JSON
-
-```bash
 metainflow search-summary --query "ByteDance 开源项目" --instruction "按项目类型分类" --output json
 ```
 
-### 搜索总结的模型配置
-
-`search-summary` 自己完成搜索，模型只负责总结。默认已内置智谱搜索 API 的 base URL，通常只需要配置 API Key：
-
-```bash
-export PROVIDER_API_KEY="your-api-key"
-# 可选：如果总结阶段要走别的端点或 Key，可单独配置
-# export SUMMARY_BASE_URL="https://your-summary-endpoint/v1"
-# export SUMMARY_API_KEY="your-summary-api-key"
-# 可选：单独指定“总结阶段”的模型
-# export SUMMARY_MODEL="glm-4.7-flash"
-export SEARCH_PAGE_TIMEOUT_SECONDS="30"
-export WEB_SEARCH_BACKEND="auto"
-export SEARCH_PROVIDER_ENGINE="search_pro"
-export SEARCH_RESULT_COUNT="10"
-```
-
 说明：
-- `PROVIDER_BASE_URL` 默认值是 `https://open.bigmodel.cn/api/paas/v4`
-- 如果要切换到别的兼容端点，再显式覆盖 `PROVIDER_BASE_URL`
-- 如果总结阶段要单独走其他端点或 API Key，可使用 `SUMMARY_BASE_URL` 和 `SUMMARY_API_KEY`
-- `SEARCH_PROVIDER_ENGINE` 控制搜索阶段使用的 provider 搜索引擎/档位
-- `SEARCH_RESULT_COUNT` 控制搜索阶段返回的结果数量
-- `SUMMARY_MODEL` 控制总结阶段使用的模型；如果没有设置，默认使用 `glm-4.7-flash`
 
-然后执行：
+- `search-summary` 会先获取搜索结果，再调用总结模型
+- `auto` 模式下当前顺序是：智谱 provider 搜索 -> SearXNG -> 百度 Playwright
+- 如果只想稳定走智谱主链路，请显式设置 `PROVIDER_BASE_URL=https://open.bigmodel.cn/api/paas/v4`
+
+### 抓取指定 URL
 
 ```bash
-python -m playwright install chromium
-metainflow search-summary --query "React 19 新特性" --output json
+metainflow web-crawl --url "https://example.com/page.html"
+metainflow web-crawl --url "https://example.com/page.html" --instruction "提取主要观点" --output json
 ```
 
 如果 `metainflow` 命令不可用，可临时用：
@@ -138,11 +119,12 @@ metainflow search-summary --query "React 19 新特性" --output json
 ```bash
 python -m metainflow_studio_cli.main parse-doc --file ./tests/integration/samples/Assignment1.docx --output json
 python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json
+python -m metainflow_studio_cli.main web-crawl --url https://example.com/page.html --output json
 ```
 
 ## 3) JSON 输出结构
 
-`--output json` 统一返回：
+`parse-doc --output json` 统一返回：
 
 ```json
 {
@@ -188,6 +170,30 @@ python -m metainflow_studio_cli.main search-summary --query "React 19 新特性"
 }
 ```
 
+`web-crawl --output json` 统一返回：
+
+```json
+{
+  "success": true,
+  "data": {
+    "markdown": "...",
+    "extracted": "...",
+    "url": "https://example.com/page.html",
+    "title": "...",
+    "instruction": "提取主要观点",
+    "links": []
+  },
+  "meta": {
+    "fetch_provider": "crawl4ai",
+    "summary_provider": "llm",
+    "model": "...",
+    "latency_ms": 0,
+    "request_id": "..."
+  },
+  "error": null
+}
+```
+
 ## 4) Ubuntu 必装依赖
 
 为保证 `.doc` / `.xls` 转换和 PDF OCR 可用：
@@ -200,14 +206,22 @@ sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-chi-sim tesserac
 ## 5) 常见问题
 
 ### `zsh: command not found: metainflow`
+
 - 先执行：`python -m pip install -e '.[dev]'`
 - 再执行：重开终端或 `hash -r`
 
 ### `.doc` / `.xls` 解析失败（`soffice not found`）
+
 - 安装 `libreoffice`
 
-### PDF 输出为空
-- 安装 `tesseract-ocr`、`poppler-utils` 与语言包后重试
+### `search-summary` 没走智谱主链路
+
+- 检查 `PROVIDER_BASE_URL` 是否已设为 `https://open.bigmodel.cn/api/paas/v4`
+- 检查 `WEB_SEARCH_BACKEND` 是否被强制改成别的后端
+
+### `web-crawl` 或 Playwright fallback 无法运行
+
+- 执行 `python -m playwright install chromium`
 
 ## 6) 测试命令
 
@@ -221,8 +235,4 @@ pytest -q
 METAINFLOW_RUN_SAMPLE_MATRIX=1 pytest -q tests/integration/test_real_sample_matrix.py
 ```
 
-## 7) 面向开发者的文档
-
-如果你是 agent 接入者或需要开发新能力，请看：
-
-- `docs/agent-usage.md`
+Attribution: This project uses Crawl4AI (https://github.com/unclecode/crawl4ai) for web data extraction.

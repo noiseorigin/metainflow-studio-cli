@@ -1,15 +1,17 @@
 # metainflow-studio-cli
 
-`metainflow-studio-cli` is a Python CLI toolkit. The current implemented commands are `parse-doc` and `search-summary`.
+`metainflow-studio-cli` is a Python CLI toolkit. The current implemented commands are `parse-doc`, `search-summary`, and `web-crawl`.
 
 ## Skills
 
 Project skills live in `metainflow-skills/` inside this repository so they stay versioned with the CLI implementation.
 
-For local OpenCode discovery, symlink a skill into `~/.agents/skills/` from the repo root:
+For local OpenCode discovery, symlink skills into `~/.agents/skills/` from the repo root:
 
 ```bash
 ln -sfn "$(pwd)/metainflow-skills/metainflow-doc-parse" "$HOME/.agents/skills/metainflow-doc-parse"
+ln -sfn "$(pwd)/metainflow-skills/metainflow-web-search" "$HOME/.agents/skills/metainflow-web-search"
+ln -sfn "$(pwd)/metainflow-skills/metainflow-web-fetch" "$HOME/.agents/skills/metainflow-web-fetch"
 ```
 
 More agent-facing setup details are in `docs/agent-usage.md`.
@@ -18,6 +20,7 @@ Available repo-local skills:
 
 - `metainflow-doc-parse`
 - `metainflow-web-search`
+- `metainflow-web-fetch`
 
 ## Quick Start
 
@@ -26,22 +29,24 @@ python -m pip install -e .[dev]
 pytest -q
 python -m metainflow_studio_cli.main parse-doc --file ./sample.txt --output json
 python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json
+python -m metainflow_studio_cli.main web-crawl --url https://example.com --output json
 ```
 
 ## Search Summary
 
-Use `search-summary` when you need keyword-based web search plus AI-generated summary:
+Use `search-summary` when you need keyword-based web search plus AI-generated summary.
 
-```bash
-metainflow search-summary --query "React 19 新特性" --instruction "按功能分类整理" --output json
-```
+The current routing strategy is:
 
-`metainflow-studio-cli` acquires search results itself using a robust, three-tiered failover strategy:
-1. **Zhipu Web Search API** (Primary, highest quality via AI summarization)
-2. **SearXNG API** (Secondary fast fallback when Zhipu blocks or returns empty)
-3. **Baidu via undetected Playwright** (Ultimate fallback when APIs fail)
+1. Zhipu-compatible provider web search
+2. SearXNG fallback
+3. Baidu Playwright fallback
 
-After results are extracted, it uses the configured model only for the final summarization.
+After results are collected, the configured summary model generates the final answer.
+
+## Web Crawl
+
+Use `web-crawl` when you already have a target URL and need page extraction with optional summarization. This command uses Crawl4AI for page retrieval.
 
 ## Supported `parse-doc` extensions
 
@@ -65,59 +70,47 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |---|---|---|
-| `PROVIDER_BASE_URL` | `https://open.bigmodel.cn/api/paas/v4` | ZhipuAI-compatible API base URL (search) |
-| `PROVIDER_API_KEY` | _(required)_ | API key for search provider |
+| `PROVIDER_BASE_URL` | `https://api.openai.com/v1` | Base URL for provider-compatible requests. Set this to `https://open.bigmodel.cn/api/paas/v4` if you want the Zhipu provider path for `search-summary`. |
+| `PROVIDER_API_KEY` | _(required)_ | API key |
 | `PROVIDER_TIMEOUT_SECONDS` | `60` | Request timeout in seconds |
 | `PROVIDER_MAX_RETRIES` | `2` | Max retries on failure |
 | `PROVIDER_MODEL_DOC_PARSE` | `gpt-4.1-mini` | Model used by `parse-doc` |
-| `PROVIDER_MODEL_WEB_SEARCH` | `glm-4-air` | Reserved (currently unused at runtime) |
-| `SUMMARY_BASE_URL` | _(falls back to `PROVIDER_BASE_URL`)_ | Override endpoint for summarization |
-| `SUMMARY_API_KEY` | _(falls back to `PROVIDER_API_KEY`)_ | Override key for summarization |
+| `PROVIDER_MODEL_WEB_SEARCH` | `glm-4-air` | Reserved search-provider model setting |
+| `PROVIDER_MODEL_WEB_FETCH` | `gpt-4.1-mini` | Model used by `web-crawl` summarization |
+| `SUMMARY_BASE_URL` | _(falls back to `PROVIDER_BASE_URL`)_ | Optional separate endpoint for `search-summary` summarization |
+| `SUMMARY_API_KEY` | _(falls back to `PROVIDER_API_KEY`)_ | Optional separate key for `search-summary` summarization |
 | `SUMMARY_MODEL` | `glm-4-flash` | Model used to summarize search results |
-| `SEARCH_PAGE_TIMEOUT_SECONDS` | `30` | Playwright page load timeout |
-| `WEB_SEARCH_BACKEND` | `auto` | `auto` / `zhipu-web-search` / `baidu-playwright` |
-| `SEARCH_PROVIDER_ENGINE` | `search_pro` | ZhipuAI search engine tier |
+| `SEARCH_PAGE_TIMEOUT_SECONDS` | `30` | Baidu Playwright page timeout |
+| `WEB_SEARCH_BACKEND` | `auto` | `auto` / `zhipu-web-search` / `searxng-web-search` / `baidu-playwright` |
+| `SEARCH_PROVIDER_ENGINE` | `search_pro` | Zhipu search engine tier |
 | `SEARCH_RESULT_COUNT` | `10` | Number of search results to request |
-| `SEARXNG_BASE_URL` | `http://localhost:8080` | Endpoint for the SearXNG secondary fallback |
-| `METAINFLOW_RUN_SAMPLE_MATRIX` | _(unset)_ | Set to `1` to enable integration tests |
+| `SEARXNG_BASE_URL` | `http://localhost:8080` | Endpoint for the SearXNG fallback |
+| `METAINFLOW_WEB_FETCH_VERIFY_SSL` | `1` | Whether `web-crawl` verifies SSL certificates |
+| `METAINFLOW_RUN_SAMPLE_MATRIX` | _(unset)_ | Set to `1` to enable real sample matrix integration tests |
 
-### Playwright fallback (optional)
+### Playwright fallback
 
-The Baidu Playwright fallback requires the `playwright` extra and browser binaries:
+The Baidu fallback path in `search-summary` requires the optional `undetected-playwright` extra and browser binaries:
 
 ```bash
 pip install -e ".[playwright,dev]"
 python -m playwright install chromium
 ```
 
-If not installed, `WEB_SEARCH_BACKEND=auto` will skip the Playwright fallback gracefully.
+### Search provider note
 
-### SearXNG fallback (Recommended)
-
-To enable the secondary SearXNG fallback tier, you can run a local container with **JSON format explicitly allowed**:
+If you want provider-backed search instead of pure fallback mode, set:
 
 ```bash
-# Create custom settings.yml to bypass SearXNG default JSON ban
-mkdir -p /tmp/searxng && cat << 'EOF' > /tmp/searxng/settings.yml
-search:
-  formats:
-    - html
-    - json
-server:
-  port: 8080
-  bind_address: "0.0.0.0"
-  secret_key: "my_ultra_secret_key"
-EOF
-
-# Run SearXNG
-docker run --rm -d --name searxng -p 8080:8080 -v /tmp/searxng:/etc/searxng searxng/searxng
+export PROVIDER_BASE_URL="https://open.bigmodel.cn/api/paas/v4"
+export PROVIDER_API_KEY="your-api-key"
 ```
 
-Once running on port `8080` (or another host via `SEARXNG_BASE_URL`), the `WEB_SEARCH_BACKEND=auto` router will seamlessly catch requests that Zhipu fails to process.
+You can still keep `SUMMARY_BASE_URL` and `SUMMARY_API_KEY` separate for summarization.
 
 ## Ubuntu dependencies
 
-Install system packages for full `.doc` / `.xls` and OCR support:
+Install system packages for full `.doc` / `.xls` conversion and OCR support:
 
 ```bash
 sudo apt-get update
@@ -134,3 +127,5 @@ METAINFLOW_RUN_SAMPLE_MATRIX=1 pytest -q tests/integration/test_real_sample_matr
 ```
 
 By default, the sample matrix test is skipped unless `METAINFLOW_RUN_SAMPLE_MATRIX=1` is set.
+
+Attribution: This project uses Crawl4AI (https://github.com/unclecode/crawl4ai) for web data extraction.

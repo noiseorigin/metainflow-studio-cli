@@ -14,11 +14,13 @@ dependencies = [
   "pypdf>=4.2.0",
   "pdf2image>=1.17.0",
   "pytesseract>=0.3.10",
+  "playwright>=1.52.0",
+  "beautifulsoup4>=4.12.0",
+  "crawl4ai>=0.8.0",
 ]
 
 [project.optional-dependencies]
 playwright = [
-  "playwright>=1.52.0",
   "undetected-playwright>=0.3.0",
 ]
 dev = [

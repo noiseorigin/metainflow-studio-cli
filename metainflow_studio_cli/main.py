@@ -8,6 +8,7 @@ import typer
 
 from metainflow_studio_cli.core.errors import ExternalError, MetainflowError, ProcessingError, ValidationError
 from metainflow_studio_cli.services.doc_parse.service import parse_document
+from metainflow_studio_cli.services.web_fetch.service import web_crawl
 from metainflow_studio_cli.services.web_search.service import search_summary
 
 
@@ -80,6 +81,48 @@ def search_summary_command(
         typer.echo(envelope["data"]["summary"])
 
 
+@app.command("web-crawl")
+def web_crawl_command(
+    url: str = typer.Option(..., "--url"),
+    instruction: str = typer.Option("", "--instruction"),
+    output: str = typer.Option("text", "--output", "-o"),
+) -> None:
+    started = time.perf_counter()
+    envelope: dict | None = None
+    try:
+        envelope = web_crawl(url=url, instruction=instruction, output=output)
+    except ValidationError as exc:
+        if output == "json":
+            _emit_web_crawl_error(url, instruction, 2, str(exc), retryable=False, latency_ms=_elapsed_ms(started))
+        _emit_error(output, 2, str(exc), retryable=False)
+    except ProcessingError as exc:
+        if output == "json":
+            _emit_web_crawl_error(url, instruction, 1, str(exc), retryable=False, latency_ms=_elapsed_ms(started))
+        _emit_error(output, 1, str(exc), retryable=False)
+    except ExternalError as exc:
+        if output == "json":
+            _emit_web_crawl_error(url, instruction, 3, str(exc), retryable=True, latency_ms=_elapsed_ms(started))
+        _emit_error(output, 3, str(exc), retryable=True)
+    except MetainflowError as exc:
+        if output == "json":
+            _emit_web_crawl_error(url, instruction, 1, str(exc), retryable=False, latency_ms=_elapsed_ms(started))
+        _emit_error(output, 1, str(exc), retryable=False)
+
+    if envelope is None:
+        _emit_error(output, 1, "unknown error", retryable=False)
+
+    if output == "json":
+        typer.echo(json.dumps(envelope, ensure_ascii=False))
+        if envelope.get("success") is False and envelope.get("error"):
+            raise typer.Exit(code=int(envelope["error"]["code"]))
+    else:
+        extracted = envelope["data"].get("extracted", "")
+        if extracted:
+            typer.echo(extracted)
+        else:
+            typer.echo(envelope["data"]["markdown"])
+
+
 def _emit_search_error(query: str, instruction: str, code: int, message: str, retryable: bool, latency_ms: int) -> NoReturn:
     payload = {
         "success": False,
@@ -91,6 +134,37 @@ def _emit_search_error(query: str, instruction: str, code: int, message: str, re
         },
         "meta": {
             "search_provider": "",
+            "summary_provider": "",
+            "model": "",
+            "latency_ms": latency_ms,
+            "request_id": "",
+        },
+        "error": {"code": code, "message": message, "retryable": retryable},
+    }
+    typer.echo(json.dumps(payload, ensure_ascii=False))
+    raise typer.Exit(code=code)
+
+
+def _emit_web_crawl_error(
+    url: str,
+    instruction: str,
+    code: int,
+    message: str,
+    retryable: bool,
+    latency_ms: int,
+) -> NoReturn:
+    payload = {
+        "success": False,
+        "data": {
+            "markdown": "",
+            "extracted": "",
+            "url": url.strip(),
+            "title": "",
+            "instruction": instruction.strip(),
+            "links": [],
+        },
+        "meta": {
+            "fetch_provider": "",
             "summary_provider": "",
             "model": "",
             "latency_ms": latency_ms,

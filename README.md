@@ -32,8 +32,8 @@ pytest -q
 python -m metainflow_studio_cli.main parse-doc --file ./sample.txt --output json
 python -m metainflow_studio_cli.main search-summary --query "React 19 新特性" --output json
 python -m metainflow_studio_cli.main web-crawl --url https://example.com --output json
-python -m metainflow_studio_cli.main enterprise-search --keyword "源子" --output json
-python -m metainflow_studio_cli.main enterprise-query --type business --keyword "源子（深圳）人工智能有限公司" --output json
+python -m metainflow_studio_cli.main enterprise-search --keyword "示例智能" --output json
+python -m metainflow_studio_cli.main enterprise-query --type business --keyword "示例智能（深圳）科技有限公司" --output json
 ```
 
 ## Search Summary

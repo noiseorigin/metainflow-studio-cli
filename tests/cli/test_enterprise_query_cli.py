@@ -74,7 +74,7 @@ def test_enterprise_search_text_output(monkeypatch) -> None:
         }
 
     monkeypatch.setattr("metainflow_studio_cli.main.enterprise_search", fake_enterprise_search)
-    result = runner.invoke(app, ["enterprise-search", "--keyword", "源子"])
+    result = runner.invoke(app, ["enterprise-search", "--keyword", "示例智能"])
     assert result.exit_code == 0
     assert result.stdout.strip() == "# 企业搜索"
 

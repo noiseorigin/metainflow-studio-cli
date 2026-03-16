@@ -6,15 +6,15 @@ from metainflow_studio_cli.services.enterprise_query.router import (
 
 
 def test_detect_identifier_kind_prefers_credit_code() -> None:
-    assert detect_identifier_kind("91440300MAE0AE056J") == "credit-code"
+    assert detect_identifier_kind("91310000MA1234567X") == "credit-code"
 
 
 def test_detect_identifier_kind_for_full_company_name() -> None:
-    assert detect_identifier_kind("源子（深圳）人工智能有限公司") == "full-name"
+    assert detect_identifier_kind("示例智能（深圳）科技有限公司") == "full-name"
 
 
 def test_detect_identifier_kind_for_fragment() -> None:
-    assert detect_identifier_kind("源子") == "ambiguous"
+    assert detect_identifier_kind("示例智能") == "ambiguous"
 
 
 def test_should_refresh_from_text() -> None:
@@ -38,7 +38,7 @@ def test_route_full_name_uses_exact_first() -> None:
         raise AssertionError("should not search")
 
     result = route_enterprise_query(
-        identifier="源子（深圳）人工智能有限公司",
+        identifier="示例智能（深圳）科技有限公司",
         query_type="business",
         exact_query_fn=fake_exact_query,
         search_query_fn=fake_search_query,
@@ -75,7 +75,7 @@ def test_route_exact_fallbacks_to_search() -> None:
         }
 
     result = route_enterprise_query(
-        identifier="源子（深圳）人工智能有限公司",
+        identifier="示例智能（深圳）科技有限公司",
         query_type="business",
         exact_query_fn=fake_exact_query,
         search_query_fn=fake_search_query,
@@ -101,7 +101,7 @@ def test_route_fragment_uses_search_and_requires_confirmation() -> None:
         }
 
     result = route_enterprise_query(
-        identifier="源子",
+        identifier="示例智能",
         query_type="business",
         search_query_fn=fake_search_query,
     )
@@ -117,7 +117,7 @@ def test_route_single_fuzzy_candidate_continues_to_exact() -> None:
             "data": {
                 "is_empty": False,
                 "candidates": [
-                    {"name": "源子（深圳）人工智能有限公司", "oper_name": "蓝祖聪", "credit_no": "91440300MAE0AE056J", "start_date": "2024-09-14"},
+                    {"name": "示例智能（深圳）科技有限公司", "oper_name": "张三", "credit_no": "91310000MA1234567X", "start_date": "2024-09-14"},
                 ],
             },
             "meta": {"cache_hit": False},
@@ -125,7 +125,7 @@ def test_route_single_fuzzy_candidate_continues_to_exact() -> None:
         }
 
     def fake_exact_query(**kwargs):
-        assert kwargs["keyword"] == "91440300MAE0AE056J"
+        assert kwargs["keyword"] == "91310000MA1234567X"
         return {
             "success": True,
             "data": {"is_empty": False},
@@ -134,11 +134,10 @@ def test_route_single_fuzzy_candidate_continues_to_exact() -> None:
         }
 
     result = route_enterprise_query(
-        identifier="源子",
+        identifier="示例智能",
         query_type="business",
         exact_query_fn=fake_exact_query,
         search_query_fn=fake_search_query,
     )
     assert result["data"]["route"] == "fuzzy"
     assert result["data"]["requires_confirmation"] is False
-

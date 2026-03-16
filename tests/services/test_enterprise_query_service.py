@@ -86,11 +86,11 @@ def test_enterprise_search_normalizes_candidates(monkeypatch) -> None:
                             "num": 2,
                             "items": [
                                 {
-                                    "name": "源子（深圳）人工智能有限公司",
-                                    "oper_name": "蓝祖聪",
-                                    "credit_no": "91440300MAE0AE056J",
+                                    "name": "示例智能（深圳）科技有限公司",
+                                    "oper_name": "张三",
+                                    "credit_no": "91310000MA1234567X",
                                     "start_date": "2024-09-14",
-                                    "reg_no": "440300280626260",
+                                    "reg_no": "440300123456789",
                                 }
                             ],
                         },
@@ -103,8 +103,8 @@ def test_enterprise_search_normalizes_candidates(monkeypatch) -> None:
     monkeypatch.setenv("METAINFLOW_ENTERPRISE_API_APP_ID", "appid")
     monkeypatch.setenv("METAINFLOW_ENTERPRISE_API_SECRET", "secret")
     monkeypatch.setattr("metainflow_studio_cli.services.enterprise_query.service.httpx.post", fake_post)
-    result = enterprise_search(keyword="源子", output="json", session_id="sess-1")
-    assert result["data"]["candidates"][0]["credit_no"] == "91440300MAE0AE056J"
+    result = enterprise_search(keyword="示例智能", output="json", session_id="sess-1")
+    assert result["data"]["candidates"][0]["credit_no"] == "91310000MA1234567X"
 
 
 def test_enterprise_balance_parses_numeric_balance(monkeypatch) -> None:

@@ -71,14 +71,14 @@ def parse_document(file_or_url: str, output: str = "text") -> dict:
         "success": True,
         "data": {
             "markdown": markdown,
-                "blocks": [],
-                "tables": tables,
-                "source": {
-                    "input": file_or_url,
-                    "resolved_path": str(original_source_path),
-                    "file_type": original_extension,
-                },
+            "blocks": [],
+            "tables": tables,
+            "source": {
+                "input": file_or_url,
+                "resolved_path": str(original_source_path),
+                "file_type": original_extension,
             },
+        },
         "meta": {
             "parser": "local",
             "latency_ms": int((time.perf_counter() - started) * 1000),

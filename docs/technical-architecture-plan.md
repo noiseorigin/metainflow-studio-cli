@@ -38,6 +38,7 @@
   - `PROVIDER_TIMEOUT_SECONDS`
   - `PROVIDER_MAX_RETRIES`
   - `PROVIDER_MODEL_DOC_PARSE`
+  - `PROVIDER_MODEL_WEB_SEARCH`
 
 选择原则：
 - 命名统一
@@ -71,6 +72,39 @@
 - 优先保证可控和可部署
 - 先做本地解析，减少外部依赖
 - 对 Ubuntu 生产环境友好
+
+### 5.1 搜索摘要能力选型
+
+- 命令：`search-summary`
+- 形态：关键词搜索 + AI 总结
+- skill：`metainflow-web-search`
+- 外部用法：与 `miaoda-web-search` 保持一致
+- 搜索：由 `metainflow-studio-cli` 自己获取结果
+- 默认搜索源：智谱 `Web Search API`
+- 兜底搜索源：百度 `undetected-playwright`
+- 总结：由配置模型基于标准化结果生成摘要
+
+选择原则：
+- 优先复用既有 skill 使用心智
+- 先提供单命令搜索入口
+- 保证搜索能力不依赖 provider-native web search
+- 默认主路径优先保证百度搜索可抓取成功
+- 入口选择以真实稳定性验证结果为准
+- provider web search 与 Playwright 搜索都要复用同一标准化结果结构
+- 后续再与 `web-crawl` 拆分协作
+
+当前实现状态：
+- 已实现 `search_provider + playwright_search_provider + zhipu_web_search_provider + summary_provider + service` 五层拆分
+- 当前默认入口是智谱 `Web Search API`，失败时回退到百度 Playwright
+- 浏览器层保留 `undetected-playwright` 作为 fallback 搜索能力
+- 总结阶段调用普通模型接口，不依赖 provider-native web search
+- 当前 `json` 模式支持在总结失败时保留已获取的搜索结果
+
+当前表现观察：
+- 当前设计从单一路径演进为“provider 结构化搜索主、Playwright 百度备”的混合方案
+- Playwright fallback 继续保留真实环境验证过的可用抓取链路
+- 当前真实返回的结果链接仍是百度跳转链接，尚未解析成最终落地 URL
+- 因此当前版本更适合作为可用基线，而不是最终搜索质量形态
 
 ### 6. 系统依赖
 
@@ -111,7 +145,7 @@
 
 ## 当前约束
 
-- 首个命令只做 `parse-doc`
+- 当前已实现 `parse-doc` 与 `search-summary`
 - 运行环境以 Ubuntu 服务器为主
 - 需要兼容 OpenCode skill 方式调用
 - 当前更关注可用性、准确性、稳定性，不优先做复杂服务化
@@ -137,6 +171,10 @@
 - [ ] 待定：增加结构化日志和 `request_id`
 - [ ] 待定：增加 URL 下载策略（超时、重试、白名单/黑名单）
 - [ ] 待定：增加配置文件支持，和 `PROVIDER_*` 环境变量统一映射
+- [ ] 待定：为 `search-summary` 增加 query 改写、结果过滤、去重与来源质量排序
+- [ ] 待定：为 `search-summary` 增加多搜索源 fallback，不只依赖单一 Playwright 百度搜索
+- [ ] 待定：为百度搜索结果增加跳转链接解析，尽量返回真实目标 URL
+- [ ] 待定：把入口稳定性探测抽象成可配置策略，而不是只依赖固定顺序 fallback
 
 ### P2
 
@@ -145,6 +183,8 @@
 - [ ] 待定：设计 API 层输入输出模型
 - [ ] 待定：设计异步任务模型（`task_id`, status, result_url）
 - [ ] 待定：设计对象存储与结果持久化方案
+- [ ] 待定：增加 `search -> web-crawl -> summarize` 的二阶段深度搜索模式
+- [ ] 待定：评估搜索 API / SearXNG / 自建聚合层，降低纯 Playwright 搜索方案的长期资源成本
 
 ---
 

@@ -39,6 +39,7 @@ Attribution: This project uses Crawl4AI (https://github.com/unclecode/crawl4ai) 
 
 - `.pdf`
 - `.doc` (converted via LibreOffice `soffice`)
+- `.xls` (converted via LibreOffice `soffice`)
 - `.docx`
 - `.pptx`
 - `.xlsx`
@@ -66,7 +67,7 @@ cp .env.example .env
 
 ## Ubuntu dependencies
 
-Install system packages for full `.doc` and OCR support:
+Install system packages for full `.doc` / `.xls` and OCR support:
 
 ```bash
 sudo apt-get update

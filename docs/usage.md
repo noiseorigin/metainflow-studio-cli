@@ -7,7 +7,7 @@
 - `parse-doc`：解析文档（本地或 URL），输出文本或 JSON
 - `web-crawl`：抓取指定 URL 的网页内容，并按需总结/提取
 
-支持格式：`.pdf .doc .docx .pptx .xlsx .csv .txt .md .html`
+支持格式：`.pdf .doc .docx .pptx .xls .xlsx .csv .txt .md .html`
 
 ## 0) 环境变量配置
 

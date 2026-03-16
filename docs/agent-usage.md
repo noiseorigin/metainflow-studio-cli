@@ -16,6 +16,20 @@
 - `metainflow-doc-parse`
 - `metainflow-web-fetch`
 
+当前支持的文档类型：
+- `.pdf`
+- `.doc`
+- `.docx`
+- `.pptx`
+- `.xls`
+- `.xlsx`
+- `.csv`
+- `.txt`
+- `.md`
+- `.html`
+
+---
+
 ## 2. 首次上手
 
 在项目根目录执行：
